@@ -8,7 +8,17 @@ import { Textarea } from '../../components/Textarea'
 import { FiShare2 } from 'react-icons/fi'
 import { FaTrash } from 'react-icons/fa'
 
-export default function Dashboard(){
+import { db } from '../../services/firebaseConection'
+import { addDoc, collection } from 'firebase/firestore';
+import { toast } from 'react-toastify';
+
+interface HomeProps {
+    user: {
+        email:string;
+    }
+}
+
+export default function Dashboard({ user }: HomeProps){
 
     const [input, setInpput] = useState('');
     const [publicTaks, setPublicTaks] = useState(false);
@@ -17,12 +27,28 @@ export default function Dashboard(){
         setPublicTaks(e.target.checked);       
     }
 
-    function handleRegisterTask(e:FormEvent){
+    async function handleRegisterTask(e:FormEvent){
         e.preventDefault();
 
         if(input ==='') return;
 
-        
+        try {
+            await addDoc(collection(db, "tasks"),{
+                tarefa: input,
+                created: new Date(),
+                user: user?.email,
+                public: publicTaks
+            });
+
+            setInpput("");
+            setPublicTaks(false);
+            toast.success("Tarefa criada com sucesso!")
+            
+        } catch (error) {
+            console.log(error);
+            toast.warn("Ops! Deu algum erro");
+        }
+
 
     }
 
@@ -101,10 +127,14 @@ export const getServerSideProps: GetServerSideProps = async ({req}) => {
                 permanent: false,
             }
         }
-    }
+    } 
     
     
     return{
-        props:{},
+        props:{
+            user:{
+                email: session?.user?.email
+            }
+        },
     }
 }
