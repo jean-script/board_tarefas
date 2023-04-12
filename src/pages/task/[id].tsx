@@ -6,7 +6,8 @@ import { GetServerSideProps } from "next";
 
 import { db } from '../../services/firebaseConection';
 
-import { Textarea } from '../../components/Textarea'
+import { Textarea } from '../../components/Textarea';
+import { FaTrash } from 'react-icons/fa'
 
 import {
     doc,
@@ -15,7 +16,8 @@ import {
     where,
     getDoc,
     addDoc,
-    getDocs
+    getDocs,
+    deleteDoc
 } from 'firebase/firestore';
 import { toast } from "react-toastify";
 
@@ -59,7 +61,17 @@ export default function Task({ item, allComments }:TaskProps){
                 user: session?.user?.email,
                 name: session?.user?.name,
                 taskId: item.taskId
-            })
+            });
+
+            const data = {
+                id: docRef.id,
+                comment: input,
+                user: session?.user?.email,
+                name: session?.user?.name,
+                taskId: item?.taskId
+            }
+
+            setComments((oldItem)=> [...oldItem, data])
 
             setInput('');
 
@@ -69,6 +81,23 @@ export default function Task({ item, allComments }:TaskProps){
             console.log(error);
         }
 
+    }
+
+    async function handleDeleteComment(id:string){
+        try {
+            const docRef = doc(db, "comments", id);
+            await deleteDoc(docRef);
+
+            const deleteCommente = comments.filter( (item) => item.id !== id );
+
+            setComments(deleteCommente);
+            toast.success("Deletado com sucesso!")
+
+        } catch (error) {
+            console.log(error);
+            toast.error("Ops! Erro ao deletar");
+            
+        }
     }
 
     return(
@@ -111,6 +140,14 @@ export default function Task({ item, allComments }:TaskProps){
 
                 {comments.map((item)=>(
                     <article className={styles.comment} key={item.id}>
+                        <div className={styles.headComments}>
+                            <label className={styles.commentLabel}>{item.name}</label>
+                            {item.user === session?.user?.email && (
+                                <button className={styles.buttonTrash} onClick={()=> handleDeleteComment(item.id)}>
+                                    <FaTrash size={18} color="#EA3140"/>
+                                </button>
+                            )}
+                        </div>
                         <p>{item.comment}</p>
                     </article>
                 ))}
@@ -134,17 +171,14 @@ export const getServerSideProps: GetServerSideProps = async ({ params }) => {
 
         allComments.push({
             id:doc.id,
-            comment:doc.data().comment,
-            user: doc.data().user,
-            name: doc.data.name,
-            taskId: doc.data().taskId
+            comment:doc.data()?.comment,
+            user: doc.data()?.user,
+            name: doc.data()?.name,
+            taskId: doc.data()?.taskId
         })
 
     })
-
-    console.log(allComments);
     
-
     const snapshot = await getDoc(docRef);
 
     if(snapshot.data() === undefined){
